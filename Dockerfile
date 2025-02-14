@@ -2,9 +2,12 @@ FROM php:fpm-alpine
 
 USER root
 
-# Install dependencies
-RUN apk update
-RUN apk add --no-cache \
+COPY ./tmp/root_ca.crt /usr/local/share/ca-certificates/root_ca.crt
+
+COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
+
+RUN apk update && \
+    apk add --no-cache \
     autoconf \ 
     freetype-dev \
     g++ \
@@ -20,38 +23,24 @@ RUN apk add --no-cache \
     pcre-dev \
     pngquant \
     unzip \
-    zlib-dev
+    zlib-dev && \
+    docker-php-ext-configure gd && \
+    docker-php-ext-install -j$(nproc) gd && \
+    docker-php-ext-install pdo && \
+    docker-php-ext-install pdo_mysql && \
+    docker-php-ext-install zip && \
+    pecl install redis && \
+    printf '%s\n' 'extension=redis.so' > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini && \
+    printf '%s\n\n%s' '#!/bin/sh' 'php artisan "$@"' > /usr/local/bin/artisan && \
+    chmod +x /usr/local/bin/artisan && \
+    addgroup -g 1000 laravel && \
+    adduser -u 1000 -D -S -G laravel laravel && \
+    mkdir -p /var/www/html && \
+    chown laravel:laravel /var/www/html && \
+    update-ca-certificates
 
-# Install gd
-RUN docker-php-ext-configure gd
-RUN docker-php-ext-install -j$(nproc) gd
-
-# Install pdo
-RUN docker-php-ext-install pdo
-
-# Install pdo_mysql
-RUN docker-php-ext-install pdo_mysql
-
-# Install zip
-RUN docker-php-ext-install zip
-
-# Install redis
-RUN pecl install redis
-RUN printf '%s\n' 'extension=redis.so' > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini
-
-# Install composer
-COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
-
-# Install artisan
-RUN printf '%s\n\n%s' '#!/bin/sh' 'php artisan "$@"' > /usr/local/bin/artisan
-RUN chmod +x /usr/local/bin/artisan
-
-RUN addgroup -g 1000 laravel
-RUN adduser -u 1000 -D -S -G laravel laravel
-
-RUN mkdir -p /var/www/html
-RUN chown laravel:laravel /var/www/html
+USER laravel
 
 WORKDIR /var/www/html
 
-USER laravel
+# CMD ["php-fpm"]

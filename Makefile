@@ -1,4 +1,11 @@
-all: docker-php-service
-	
-docker-php-service:
-	docker build -t proxymurder/php:latest -f Dockerfile ./
+AUTHOR=dqio
+IMAGE=php
+
+TAG=${AUTHOR}/${IMAGE}
+
+all: docker-build 
+
+docker-build: docker-build-php
+
+docker-build-php:
+	docker build -t ${TAG}:latest ./
