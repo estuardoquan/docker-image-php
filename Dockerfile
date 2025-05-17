@@ -1,8 +1,6 @@
-FROM php:fpm-alpine
+FROM php:fpm-alpine AS build
 
 USER root
-
-COPY ./tmp/root_ca.crt /usr/local/share/ca-certificates/root_ca.crt
 
 COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
 
@@ -32,12 +30,21 @@ RUN apk update && \
     pecl install redis && \
     printf '%s\n' 'extension=redis.so' > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini && \
     printf '%s\n\n%s' '#!/bin/sh' 'php artisan "$@"' > /usr/local/bin/artisan && \
-    chmod +x /usr/local/bin/artisan && \
+    printf '%s\n\n%s' '#!/bin/sh' 'php artisan test "$@"' > /usr/local/bin/ptest && \
+    printf '%s\n\n%s' '#!/bin/sh' 'php artisan test --filter "$@"' > /usr/local/bin/ptfltrd && \
+    chmod +x /usr/local/bin/artisan /usr/local/bin/ptest /usr/local/bin/ptfltrd && \
     addgroup -g 1000 laravel && \
     adduser -u 1000 -D -S -G laravel laravel && \
     mkdir -p /var/www/html && \
-    chown laravel:laravel /var/www/html && \
-    update-ca-certificates
+    chown laravel:laravel /var/www/html
+
+FROM build AS test
+
+COPY ./tmp/root_ca.crt /usr/local/share/ca-certificates/root_ca.crt
+
+USER root
+
+RUN update-ca-certificates
 
 USER laravel
 
