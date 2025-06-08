@@ -40,7 +40,7 @@ RUN apk update && \
 
 FROM build AS test
 
-COPY ./tmp/root_ca.crt /usr/local/share/ca-certificates/root_ca.crt
+ADD ./tmp/root_ca.crt /usr/local/share/ca-certificates/root_ca.crt
 
 USER root
 
